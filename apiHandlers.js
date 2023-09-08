@@ -1,5 +1,6 @@
 const mysql = require("mysql");
 const jwt = require("./utils/jwt");
+const formatData = require("./utils/formatData");
 
 // MySQL数据库连接配置
 const dbConfig = {
@@ -119,7 +120,7 @@ function getUserInfo(userId, callback) {
             callback(error, null);
           } else {
             const permissions = results;
-            console.log("permissions: ", permissions);
+            // console.log("permissions: ", permissions);
             const data = { userId: user.user_id, username: user.username, email: user.email, permissions };
             callback(null, { code: 200, data, success: true, timestamp: `${new Date().getTime()}` });
           }
@@ -128,8 +129,37 @@ function getUserInfo(userId, callback) {
     }
   });
 }
-// 获取用户权限列表
-
+// 获取系别列表
+function getDepartmentList(callback) {
+  const sql = "SELECT * FROM department ORDER BY departmentType ASC";
+  pool.query(sql, (error, results) => {
+    if (error) {
+      console.error("Error executing query: ", error);
+      callback(error, null);
+    } else {
+      callback(null, { code: 200, data: results, success: true, timestamp: `${new Date().getTime()}` });
+    }
+  });
+}
+// 获取数据字典
+function getDictionary(dictKeys, callback) {
+  const keyArr = dictKeys.split(",");
+  const placeholders = keyArr.map(() => "?").join(", ");
+  // 执行查询
+  const queryString = `
+    SELECT * FROM sys_dict_type
+    WHERE dict_type IN (${placeholders});
+  `;
+  pool.query(queryString, keyArr, (error, results) => {
+    if (error) {
+      console.error("Error executing query: ", error);
+      callback(error, null);
+    } else {
+      const formattedData = formatData.formatDictData(results);
+      callback(null, { code: 200, data: formattedData, success: true, timestamp: `${new Date().getTime()}` });
+    }
+  });
+}
 // 保存Token到数据库
 function saveTokenToDatabase(userId, callback) {
   const sqlToken = "SELECT * FROM tokens WHERE user_id = ?";
@@ -187,4 +217,6 @@ module.exports = {
   registerApiHandlers,
   login,
   getUserInfo,
+  getDictionary,
+  getDepartmentList,
 };
